@@ -2,34 +2,33 @@
 using System.Threading.Tasks;
 using log4net;
 
-namespace ClusterClient.Clients
+namespace ClusterClient.Clients;
+
+public class RandomClusterClient : ClusterClientBase
 {
-    public class RandomClusterClient : ClusterClientBase
+    private readonly Random random = new();
+
+    public RandomClusterClient(string[] replicaAddresses)
+        : base(replicaAddresses)
     {
-        private readonly Random random = new Random();
+    }
 
-        public RandomClusterClient(string[] replicaAddresses)
-            : base(replicaAddresses)
-        {
-        }
+    protected override ILog Log => LogManager.GetLogger(typeof(RandomClusterClient));
 
-        public override async Task<string> ProcessRequestAsync(string query, TimeSpan timeout)
-        {
-            var uri = ReplicaAddresses[random.Next(ReplicaAddresses.Length)];
+    public override async Task<string> ProcessRequestAsync(string query, TimeSpan timeout)
+    {
+        var uri = ReplicaAddresses[random.Next(ReplicaAddresses.Length)];
 
-            var webRequest = CreateRequest(uri + "?query=" + query);
-            
-            Log.InfoFormat($"Processing {webRequest.RequestUri}");
+        var webRequest = CreateRequest(uri + "?query=" + query);
 
-            var resultTask = ProcessRequestAsync(webRequest);
+        Log.InfoFormat($"Processing {webRequest.RequestUri}");
 
-            await Task.WhenAny(resultTask, Task.Delay(timeout));
-            if (!resultTask.IsCompleted)
-                throw new TimeoutException();
+        var resultTask = ProcessRequestAsync(webRequest);
 
-            return resultTask.Result;
-        }
+        await Task.WhenAny(resultTask, Task.Delay(timeout));
+        if (!resultTask.IsCompleted)
+            throw new TimeoutException();
 
-        protected override ILog Log => LogManager.GetLogger(typeof(RandomClusterClient));
+        return resultTask.Result;
     }
 }
